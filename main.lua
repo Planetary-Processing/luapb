@@ -1,7 +1,23 @@
 local bit = require "bit"
 
 function printx(x)
-  print(string.sub(bit.tohex(x), -2))
+  print(strx(x))
+end
+
+function strx(x)
+  return string.sub(bit.tohex(x), -2)
+end
+
+function printl(l)
+  s = "{"
+  for i,x in ipairs(l) do
+    s = s .. strx(x)
+    if i ~= #l then
+      s = s .. ", "
+    end
+  end
+  s = s .. "}"
+  print(s)
 end
 
 local function getVarintLength(bytes)
@@ -16,13 +32,19 @@ local function getVarintLength(bytes)
 end
 
 local function encodeVarint(varint)
-  hex = bit.tohex(varint)
-  for i=1,#hex do
-    print(hex:sub(i,i))
+  bytes = {}
+  while varint ~= 0 do
+    table.insert(bytes, bit.band(0x7f, varint))
+    varint = bit.rshift(varint, 7)
   end
+  table.sort(bytes, function(i, j) return i > j end)
+  for i=1,#bytes-1 do
+    bytes[i] = bit.bor(0x80, bytes[i])
+  end
+  return bytes
 end
 
-print(encodeVarint(150))
+printl(encodeVarint(150))
 
 local function decodeVarint(bytes)
   x = 0
