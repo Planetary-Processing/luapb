@@ -15,6 +15,8 @@ local function getVarintLength(bytes)
 end
 
 local function encodeVarint(varint)
+  print(varint)
+  print(bit.tohex(varint))
   bytes = {}
   while varint ~= 0 do
     table.insert(bytes, bit.band(0x7f, varint))
@@ -30,8 +32,8 @@ end
 local function decodeVarint(bytes)
   x = 0
   for i,b in ipairs(bytes) do
-    b = bit.lshift(bit.band(b, 0x7f), (i-1) * 8 - (i-1))
-    x = bit.bor(x, b)
+    b = bit.band(b, 0x7f) * math.pow(2, (i-1) * 8 - (i-1))
+    x = x + b
   end
   return x
 end
@@ -69,14 +71,24 @@ local function deserialiseRaw(msg)
   return outraw
 end
 
+local function int32FromVarint(varint)
+  return 0xFFFFFFFF - varint + 1
+end
+
+local function int64FromVarint(varint)
+  return 0xFFFFFFFFFFFFFFFF - varint + 1
+end
+
 -- tests
 print("tests")
 printl(encodeVarint(150))
+printl(encodeVarint(0xFFFFFFFFFFFFFFFE))
 print(decodeVarint({0x96, 0x01}))
 printx(encodeTag(1, 0))
 print(decodeTag(0x08))
 printkv(deserialiseRaw({0x08, 0x96, 0x01}))
 printkv(deserialiseRaw({0x08, 0x96, 0x01, 0x12, 0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67}))
+print(int32FromVarint(decodeVarint({0xff, 0xff, 0xff, 0xfe, 0x0f})))
 
 -- output
 local luapb = {}
