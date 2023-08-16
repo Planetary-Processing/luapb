@@ -1,24 +1,7 @@
+require "utils"
+
 local bit = require "bit"
-
-function printx(x)
-  print(strx(x))
-end
-
-function strx(x)
-  return string.sub(bit.tohex(x), -2)
-end
-
-function printl(l)
-  s = "{"
-  for i,x in ipairs(l) do
-    s = s .. strx(x)
-    if i ~= #l then
-      s = s .. ", "
-    end
-  end
-  s = s .. "}"
-  print(s)
-end
+local struct = require "struct"
 
 local function getVarintLength(bytes)
   l = 0
@@ -44,8 +27,6 @@ local function encodeVarint(varint)
   return bytes
 end
 
-printl(encodeVarint(150))
-
 local function decodeVarint(bytes)
   x = 0
   for i,b in ipairs(bytes) do
@@ -55,16 +36,48 @@ local function decodeVarint(bytes)
   return x
 end
 
-print(decodeVarint({0x96, 0x01}))
-
 local function encodeTag(fieldnum, wiretype)
   return bit.bor(bit.lshift(fieldnum, 3), wiretype)
 end
 
-printx(encodeTag(1, 0))
-
-local function decodeTag(tag)
+local function decodeTag(tag) --wiretype, fieldnum
   return bit.band(tag, 0x3),bit.rshift(tag, 3)
 end
 
+local function deserialiseRaw(msg)
+  local outraw = {}
+  while #msg > 0 do
+    local tmp
+    tmp,msg = split(msg, getVarintLength(msg))
+    local tag = decodeVarint(tmp)
+    local wiretype, fieldnum = decodeTag(tag)
+    if wiretype == 0 then -- varint
+      tmp,msg = split(msg, getVarintLength(msg))
+      outraw[fieldnum] = decodeVarint(tmp)
+    elseif wiretype == 1 then -- I64, convert to string for struct later
+      tmp,msg = split(msg, 8)
+      outraw[fieldnum] = {}
+      outraw[fieldnum] = bytesToString(tmp)
+    elseif wiretype == 2 then -- LEN, keep as is for future decoding
+      tmp,msg = split(msg, getVarintLength(msg))
+      outraw[fieldnum],msg = split(msg, decodeVarint(tmp))
+    elseif wiretype == 5 then -- I32, convert to string for struct later
+      tmp,msg = split(msg, 4)
+      outraw[fieldnum] = bytesToString(tmp)
+    end -- 3 and 4 are deprecated, haven't bothered to implement them... lazybones ;)
+  end
+  return outraw
+end
+
+-- tests
+print("tests")
+printl(encodeVarint(150))
+print(decodeVarint({0x96, 0x01}))
+printx(encodeTag(1, 0))
 print(decodeTag(0x08))
+printkv(deserialiseRaw({0x08, 0x96, 0x01}))
+printkv(deserialiseRaw({0x08, 0x96, 0x01, 0x12, 0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67}))
+
+-- output
+local luapb = {}
+return luapb
