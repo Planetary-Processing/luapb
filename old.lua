@@ -15,8 +15,6 @@ local function getVarintLength(bytes)
 end
 
 local function encodeVarint(varint)
-  print(varint)
-  print(bit.tohex(varint))
   bytes = {}
   while varint ~= 0 do
     table.insert(bytes, bit.band(0x7f, varint))
