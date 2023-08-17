@@ -7,6 +7,11 @@ typedef struct {
   int length;
 } byte_array;
 
+typedef struct {
+  uint64_t wiretype;
+  uint64_t fieldnum;
+} tag;
+
 int32_t getVarintLength(unsigned char bytes[], int num) {
   for (int l = 0; l < num; l++) {
     if (bytes[l] >> 7 == 0) {
@@ -19,7 +24,7 @@ int32_t getVarintLength(unsigned char bytes[], int num) {
 uint64_t decodeVarint(unsigned char bytes[], int num) {
   uint64_t x = 0;
   for (int i = 0; i < num; i++) {
-    x += (bytes[i] & 0x7f) << (i*8 - i);
+    x |= (bytes[i] & 0x7f) << (i*8 - i);
   }
   return x;
 }
@@ -43,4 +48,15 @@ byte_array encodeVarint(uint64_t v) {
   b.arr = out;
   b.length = n;
   return b;
+}
+
+tag decodeTag(uint64_t in) {
+  tag t;
+  t.wiretype = in | 0x7;
+  t.fieldnum = in >> 3;
+  return t;
+}
+
+uint64_t encodeTag(uint64_t wiretype, uint64_t fieldnum) {
+  return (fieldnum << 3) | wiretype;
 }

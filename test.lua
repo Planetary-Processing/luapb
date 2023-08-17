@@ -2,7 +2,7 @@ require "utils"
 
 local ffi = require "ffi"
 
-local l = ffi.load("./libluapb.so")
+local pp = ffi.load("./libluapb.so")
 
 ffi.cdef([[
   typedef struct {
@@ -15,9 +15,12 @@ ffi.cdef([[
   byte_array encodeVarint(uint64_t v);
 ]])
 
-local arr = ffi.new("unsigned char[2]", {0x96, 0x01})
+-- test decodeVarint
+print(tonumber(pp.decodeVarint(ffi.new("unsigned char[2]", {0x96, 0x01}), 2))) -- should be 150
+print(tonumber(ffi.cast("int64_t", pp.decodeVarint(ffi.new("unsigned char[10]", {0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01}), 10)))) -- should be -2 (casted for easy reading)
 
-local bts = l.encodeVarint(150)
-for i=0,bts.length-1 do
-  print(bts.arr[i])
-end
+-- test encodeVarint
+printl(arrToTable(pp.encodeVarint(150))) -- should be {96, 01}
+printl(arrToTable(pp.encodeVarint(0xFFFFFFFFFFFFFFFEULL))) -- should be {fe, ff, ff, ff, ff, ff, ff, ff, ff, 01}
+
+-- test decodeTag

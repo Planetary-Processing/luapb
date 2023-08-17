@@ -49,3 +49,11 @@ function split(arr, n)
   end
   return l,r
 end
+
+function arrToTable(arr)
+  local t = {}
+  for i=0,arr.length-1 do
+    table.insert(t, arr.arr[i])
+  end
+  return t
+end
