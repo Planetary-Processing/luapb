@@ -52,11 +52,11 @@ byte_array encodeVarint(uint64_t v) {
 
 tag decodeTag(uint64_t in) {
   tag t;
-  t.wiretype = in | 0x7;
+  t.wiretype = in & 0x7;
   t.fieldnum = in >> 3;
   return t;
 }
 
-uint64_t encodeTag(uint64_t wiretype, uint64_t fieldnum) {
+uint64_t encodeTag(uint64_t fieldnum, uint64_t wiretype) {
   return (fieldnum << 3) | wiretype;
 }

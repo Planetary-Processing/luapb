@@ -10,9 +10,18 @@ ffi.cdef([[
     int length;
   } byte_array;
 
+  typedef struct {
+    uint64_t wiretype;
+    uint64_t fieldnum;
+  } tag;
+
   int32_t getVarintLength(unsigned char bytes[], int num);
-  uint64_t decodeVarint(unsigned char bytes[], int num);
+
   byte_array encodeVarint(uint64_t v);
+  uint64_t decodeVarint(unsigned char bytes[], int num);
+
+  uint64_t encodeTag(uint64_t wiretype, uint64_t fieldnum);
+  tag decodeTag(uint64_t in);
 ]])
 
 -- test decodeVarint
@@ -24,3 +33,8 @@ printl(arrToTable(pp.encodeVarint(150))) -- should be {96, 01}
 printl(arrToTable(pp.encodeVarint(0xFFFFFFFFFFFFFFFEULL))) -- should be {fe, ff, ff, ff, ff, ff, ff, ff, ff, 01}
 
 -- test decodeTag
+local tag = pp.decodeTag(0x08)
+print(tag.fieldnum, tag.wiretype)
+
+-- test encodeTag
+print(pp.encodeTag(1, 0))
