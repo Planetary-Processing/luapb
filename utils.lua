@@ -22,7 +22,7 @@ end
 function printkv(l)
   s = "{"
   for k,v in pairs(l) do
-    s = s .. "(" .. k .. ":" .. tostring(v) .. "), "
+    s = s .. "(" .. tostring(k) .. ":" .. tostring(v) .. "), "
   end
   s = s:sub(1, -3)
   s = s .. "}"

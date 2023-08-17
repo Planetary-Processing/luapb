@@ -1,60 +1,82 @@
 require "utils"
 
-local ffi = require "ffi"
+local bit = require "bit64"
 
-local pp = ffi.load("./libluapb.so")
+local function getVarintLength(bytes)
+  l = 0
+  for _,b in ipairs(bytes) do
+    l = l + 1
+    if bit.rshift(b, 7) == 0 then -- continuation not set
+      return l
+    end
+  end
+  return -1
+end
 
-ffi.cdef([[
-  typedef struct {
-    unsigned char *arr;
-    int32_t length;
-  } byte_array;
+local function encodeVarint(varint)
+  local bytes = {}
+  while varint ~= 0 do
+    table.insert(bytes, bit.band(0x7f, varint))
+    varint = bit.rshift(varint, 7)
+  end
+  table.sort(bytes, function(i, j) return i > j end)
+  for i=1,#bytes-1 do
+    bytes[i] = bit.bor(0x80, bytes[i])
+  end
+  return bytes
+end
 
-  typedef struct {
-    uint64_t wiretype;
-    uint64_t fieldnum;
-  } tag;
+local function decodeVarint(bytes)
+  local x = 0
+  for i,b in ipairs(bytes) do
+    b = bit.band(b, 0x7f) * math.pow(2, (i-1) * 8 - (i-1))
+    x = x + b
+  end
+  return x
+end
 
-  typedef struct {
-    tag tag;
-    byte_array bytes;
-    int32_t length;
-  } record;
+local function encodeTag(fieldnum, wiretype)
+  return bit.bor(bit.lshift(fieldnum, 3), wiretype)
+end
 
-  typedef struct {
-    record *records;
-    int32_t num;
-  } message;
+local function decodeTag(tag) --wiretype, fieldnum
+  return bit.band(tag, 0x3),bit.rshift(tag, 3)
+end
 
-  int getVarintLength(unsigned char bytes[], int num);
+local function deserialiseRaw(msg)
+  local outraw = {}
+  while #msg > 0 do
+    local tmp
+    tmp,msg = split(msg, getVarintLength(msg))
+    local tag = decodeVarint(tmp)
+    local wiretype, fieldnum = decodeTag(tag)
+    if wiretype == 0 then -- varint
+      tmp,msg = split(msg, getVarintLength(msg))
+      outraw[fieldnum] = decodeVarint(tmp)
+    elseif wiretype == 1 then -- I64
+      outraw[fieldnum],msg = split(msg, 8)
+    elseif wiretype == 2 then -- LEN
+      tmp,msg = split(msg, getVarintLength(msg))
+      outraw[fieldnum],msg = split(msg, decodeVarint(tmp))
+    elseif wiretype == 5 then -- I32
+      tmp,msg = split(msg, 4)
+      outraw[fieldnum] = tmp
+    end -- 3 and 4 are deprecated, haven't bothered to implement them
+  end
+  return outraw
+end
 
-  byte_array encodeVarint(uint64_t v);
-  uint64_t decodeVarint(unsigned char bytes[], int num);
+-- tests
+print("tests")
+printl(encodeVarint(150ULL))
+printl(encodeVarint(0xFFFFFFFFFFFFFFFEULL))
+print(decodeVarint({0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01}))
+print(decodeVarint({0x96, 0x01}))
+printx(encodeTag(1, 0))
+print(decodeTag(0x08))
+printkv(deserialiseRaw({0x08, 0x96, 0x01}))
+printkv(deserialiseRaw({0x08, 0x96, 0x01, 0x12, 0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67}))
 
-  uint64_t encodeTag(uint64_t wiretype, uint64_t fieldnum);
-  tag decodeTag(uint64_t in);
-
-  record decodeRecord(unsigned char bytes[], int num);
-]])
-
-print("decodeVarint")
-print(tonumber(pp.decodeVarint(ffi.new("unsigned char[2]", {0x96, 0x01}), 2))) -- should be 150
-print(tonumber(ffi.cast("int64_t", pp.decodeVarint(ffi.new("unsigned char[10]", {0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01}), 10)))) -- should be -2 (casted for easy reading)
-
-print("\nencodeVarint")
-printl(arrToTable(pp.encodeVarint(150))) -- should be {96, 01}
-printl(arrToTable(pp.encodeVarint(0xFFFFFFFFFFFFFFFEULL))) -- should be {fe, ff, ff, ff, ff, ff, ff, ff, ff, 01}
-
-print("\ndecodeTag")
-local tag = pp.decodeTag(0x08)
-print(tag.fieldnum, tag.wiretype) -- should be 1, 0
-
-print("\nencodeTag")
-print(pp.encodeTag(1, 0)) -- should be 8
-
-print("\ndecodeRecord")
-local rec = pp.decodeRecord(ffi.new("unsigned char[9]", {0x12, 0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67}), 9)
-print(rec.tag.fieldnum, rec.tag.wiretype) -- should be 2, 2
-print(rec.length) -- should be 9
-print(rec.bytes.length) -- should be 7
-printl(arrToTable(rec.bytes)) -- should be {74, 65, 73, 74, 69, 6e, 67}
+-- output
+local luapb = {}
+return luapb
