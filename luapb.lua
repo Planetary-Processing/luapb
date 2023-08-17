@@ -34,7 +34,7 @@ printl(arrToTable(pp.encodeVarint(0xFFFFFFFFFFFFFFFEULL))) -- should be {fe, ff,
 
 -- test decodeTag
 local tag = pp.decodeTag(0x08)
-print(tag.fieldnum, tag.wiretype)
+print(tag.fieldnum, tag.wiretype) -- should be 1, 0
 
 -- test encodeTag
-print(pp.encodeTag(1, 0))
+print(pp.encodeTag(1, 0)) -- should be 8
