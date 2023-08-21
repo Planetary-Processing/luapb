@@ -1,9 +1,8 @@
-local pb = require "luapb"
-
 require "utils"
 
+local pb = require "luapb"
+
 -- tests
-print("===== tests =====")
 local proto = {
   [1]={type="bool", name="Bob"},
   [2]={type="map", keytype="string", valuetype="double", name="Cats"},
