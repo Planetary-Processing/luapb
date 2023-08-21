@@ -1,6 +1,6 @@
 -- utils
 function strx(x)
-  return string.sub(bit.tohex(x), -2)
+  return "0x"..string.sub(bit.tohex(x), -2)
 end
 
 function printx(x)
@@ -43,17 +43,4 @@ function bytesToString(bts)
     out = out .. string.char(v)
   end
   return out
-end
-
-function split(arr, n)
-  l = {}
-  r = {}
-  for i,x in ipairs(arr) do
-    if i <= n then
-      table.insert(l, x)
-    else
-      table.insert(r, x)
-    end
-  end
-  return l,r
 end
