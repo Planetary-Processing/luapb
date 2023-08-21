@@ -151,8 +151,32 @@ local converters = {
   uint32 = varintToUint32,
   string = bytesToString,
   bool = varintToBool,
-  enum = varingToEnum
+  enum = varingToEnum,
+  bytes = function (x) return x end
 }
+
+function decodePacked(msg, t, conv)
+  local out = {}
+  local tmp
+  if t == "int32" or t == "uint32" or t == "int64" or t == "uint64" or t == "bool" or t == "enum" then
+    print("hey")
+    while #msg > 0 do
+      tmp,msg = split(msg, getVarintLength(msg))
+      table.insert(out, conv(decodeVarint(tmp)))
+    end
+  elseif t == "double" then
+    while #msg > 0 do
+      tmp,msg = split(msg, 8)
+      table.insert(out, conv(tmp))
+    end
+  elseif t == "float" then
+    while #msg > 0 do
+      tmp,msg = split(msg, 4)
+      table.insert(out, conv(tmp))
+    end
+  end
+  return out
+end
 
 function deserialise(bytes, proto)
   local out = {}
@@ -163,14 +187,20 @@ function deserialise(bytes, proto)
     if t.repeated then
       if not out[t.name] then out[t.name] = {} end
       if t.packed then
-
+        print("heyo")
+        for _,v in ipairs(decodePacked(f.data, t.type, c)) do
+          print(v)
+          table.insert(out[t.name], v)
+        end
       else
         table.insert(out[t.name], c(f.data))
       end
     elseif t.type == "proto" then
       out[t.name] = deserialise(f.data, t.proto)
     elseif t.type == "map" then
-      
+      if not out[t.name] then out[t.name] = {} end
+      local kv = deserialise(f.data, {[1]={type=t.keytype, name="key"}, [2]={type=t.valuetype, name="value"}})
+      out[t.name][kv.key] = kv.value
     else
       out[t.name] = c(f.data)
     end
@@ -199,7 +229,7 @@ printl(floatToBytes(6.9))
 printl(doubleToBytes(12345.67890))
 printkv(deserialise({0x08, 0x96, 0x01}, {[1]={type="int32", name="a"}}))
 printkv(deserialise({0x22, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x28, 0x01, 0x28, 0x02, 0x28, 0x03}, {[4]={type="string", name="d"}, [5]={type="int32", name="e", repeated=true, packed=false}}))
-
+printkv(deserialise({0x32, 0x06, 0x03, 0x8e, 0x02, 0x9e, 0xa7, 0x05}, {[6]={type="int32", packed=true, repeated=true, name="f"}}))
 -- output
 local luapb = {}
 return luapb
