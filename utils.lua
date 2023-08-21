@@ -19,14 +19,22 @@ function printl(l)
   print(s)
 end
 
-function printkv(l)
+function strkv(l)
   s = "{"
   for k,v in pairs(l) do
-    s = s .. "(" .. tostring(k) .. ":" .. tostring(v) .. "), "
+    if type(v) == "table" then
+      s = s .. "(" .. tostring(k) .. ":" .. strkv(v) .. "), "
+    else
+      s = s .. "(" .. tostring(k) .. ":" .. tostring(v) .. "), "
+    end
   end
   s = s:sub(1, -3)
   s = s .. "}"
-  print(s)
+  return s
+end
+
+function printkv(l)
+  print(strkv(l))
 end
 
 function bytesToString(bts)
