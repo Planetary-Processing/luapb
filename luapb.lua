@@ -165,7 +165,7 @@ end
 function bytesToString(bts)
   local out = ""
   for i,b in ipairs(bts) do
-    out = out .. string.char(b)
+    out = out .. string.char(tonumber(b))
   end
   return out
 end
@@ -210,7 +210,7 @@ local function decodePacked(msg, t, conv)
   return out
 end
 
-local function deserialise(bytes, proto)
+local function _deserialise(bytes, proto)
   local out = {}
   local msg = deserialiseRaw(bytes)
   for _,f in ipairs(msg) do
@@ -226,10 +226,10 @@ local function deserialise(bytes, proto)
         table.insert(out[t.name], c(f.data))
       end
     elseif t.type == "proto" then
-      out[t.name] = deserialise(f.data, t.proto)
+      out[t.name] = _deserialise(f.data, t.proto)
     elseif t.type == "map" then
       if not out[t.name] then out[t.name] = {} end
-      local kv = deserialise(f.data, {[1]={type=t.keytype, name="key"}, [2]={type=t.valuetype, name="value"}})
+      local kv = _deserialise(f.data, {[1]={type=t.keytype, name="key"}, [2]={type=t.valuetype, name="value"}})
       out[t.name][kv.key] = kv.value
     else
       out[t.name] = c(f.data)
@@ -238,13 +238,17 @@ local function deserialise(bytes, proto)
   return out
 end
 
+local function deserialise(str, proto)
+  return _deserialise(stringToBytes(str), proto)
+end
+
 local serialisers = {
   float=typeToBytes('float', 4),
   double=typeToBytes('double', 8),
   string=stringToBytes
 }
 
-local function serialise(msg, proto)
+local function _serialise(msg, proto)
   local out = {}
   for k,v in pairs(msg) do
     local fn
@@ -260,14 +264,14 @@ local function serialise(msg, proto)
         for _,v in ipairs(v) do
           local ff = copy(f)
           ff.repeated = false
-          local tmp = serialise({[f.name]=v}, {[fn]=ff})
+          local tmp = _serialise({[f.name]=v}, {[fn]=ff})
           for _,b in ipairs(tmp) do
             table.insert(out, b)
           end
         end
       elseif f.type == "map" then
         for k1,v1 in pairs(v) do
-          local tmp = serialise({[f.name]={key=k1, value=v1}}, {[fn]={name=f.name, type="proto", proto={[1]={type=f.keytype, name="key"}, [2]={type=f.valuetype, name="value"}}}})
+          local tmp = _serialise({[f.name]={key=k1, value=v1}}, {[fn]={name=f.name, type="proto", proto={[1]={type=f.keytype, name="key"}, [2]={type=f.valuetype, name="value"}}}})
           for _,b in ipairs(tmp) do
             table.insert(out, b)
           end
@@ -289,7 +293,7 @@ local function serialise(msg, proto)
           payload = serialisers.double(v)
         elseif f.type == "proto" then
           wt = 2
-          local tmp = serialise(v, f.proto)
+          local tmp = _serialise(v, f.proto)
           payload = encodeVarint(#tmp)
           for _,b in ipairs(tmp) do
             table.insert(payload, b)
@@ -318,6 +322,10 @@ local function serialise(msg, proto)
     end
   end
   return out
+end
+
+local function serialise(msg, proto)
+  return bytesToString(_serialise(msg, proto))
 end
 
 -- output
