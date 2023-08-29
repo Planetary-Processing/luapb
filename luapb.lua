@@ -50,6 +50,9 @@ local function getVarintLength(bytes)
 end
 
 local function encodeVarint(varint)
+  if varint == 0 then
+    return {0}
+  end
   local bytes = {}
   while varint ~= 0 do
     table.insert(bytes, bit.band(0x7f, varint))
