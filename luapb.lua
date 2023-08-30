@@ -1,4 +1,4 @@
-local bit = require "./bit64"
+local bit = require ((...):match("(.-)[^%.]+$").."bit64")
 local ffi = require "ffi"
 
 ffi.cdef([[
