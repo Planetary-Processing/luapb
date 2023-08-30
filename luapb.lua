@@ -1,4 +1,4 @@
-local bit = require "bit64"
+local bit = require "./bit64"
 local ffi = require "ffi"
 
 ffi.cdef([[
@@ -236,6 +236,19 @@ local function _deserialise(bytes, proto)
       out[t.name][kv.key] = kv.value
     else
       out[t.name] = c(f.data)
+    end
+  end
+  for _,f in pairs(proto) do
+    if not out[f.name] then
+      if f.type == "int64" or f.type == "uint64" or f.type == "int32" or f.type == "uint32" or f.type == "double" or f.type == "float" or f.type == "enum" then
+        out[f.name] = 0
+      end
+      if f.type == "string" then
+        out[f.name] = ""
+      end
+      if f.type == "map" or f.repeated or f.type == "bytes" then
+        out[f.name] = {}
+      end
     end
   end
   return out
